@@ -4,28 +4,19 @@ using System.Net.Sockets;
 
 namespace Server;
 
-public class Server
+public class Server(IPAddress ipAddress, int port)
 {
-    private TcpListener listener;
-    private IPAddress ipAddress;
-    private int port;
-    private ConcurrentDictionary<int, Room> rooms = new ConcurrentDictionary<int, Room>();
-    
-    public Server(IPAddress ipAddress, int port)
-    {
-        this.ipAddress = ipAddress;
-        this.port = port;
-        listener = new TcpListener(ipAddress, port);
-    }
-    
+    private readonly TcpListener _listener = new(ipAddress, port);
+    private readonly ConcurrentDictionary<int, Room> _rooms = new ConcurrentDictionary<int, Room>();
+
     public void Start()
     {
-        listener.Start();
+        _listener.Start();
         Logger.LogInfo("Server started");
         
         while (true)
         {
-            TcpClient client = listener.AcceptTcpClient();
+            TcpClient client = _listener.AcceptTcpClient();
             Logger.LogInfo($"Client connected");
             
             Task.Run(() => HandleClient(client));
@@ -44,7 +35,7 @@ public class Server
             string name = reader.ReadString();
             int roomNumber = reader.ReadInt32();
             
-            Room targetRoom = rooms.GetOrAdd(roomNumber, _ => new Room());
+            Room targetRoom = _rooms.GetOrAdd(roomNumber, _ => new Room(MoveClientToRoom));
             
             writer.Write(true);
             writer.Write($"[SERVER] Joining the room {roomNumber}");
@@ -57,5 +48,14 @@ public class Server
             Logger.LogError($"Handshake failed: {e.Message}");
             client.Close();
         }
+    }
+    
+    private void MoveClientToRoom(ClientNode clientNode, int newRoomId)
+    {
+        Logger.LogInfo($"Switching {clientNode.Name} to room {newRoomId}");
+        clientNode.Writer.Write(true); clientNode.Writer.Write($"[SERVER] Switching to room {newRoomId}");
+        
+        Room newRoom = _rooms.GetOrAdd(newRoomId, _ => new Room(MoveClientToRoom));
+        newRoom.AcceptExistingClient(clientNode); 
     }
 }

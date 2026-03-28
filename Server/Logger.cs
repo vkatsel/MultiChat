@@ -13,4 +13,16 @@ public class Logger
         Console.ForegroundColor = ConsoleColor.Red;
         Console.WriteLine($"[SERVER][ERROR] {message}");
     }
+
+    public static void LogWarning(string message)
+    {
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"[SERVER][WARNING] {message}");
+    }
+
+    public static void LogSuccess(string message)
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"[SERVER][SUCCESS] {message}");
+    }
 }
