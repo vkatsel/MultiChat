@@ -25,11 +25,11 @@ public class Server(IPAddress ipAddress, int port)
 
     private void HandleClient(TcpClient client)
     {
-        NetworkStream stream = client.GetStream();
         ClientNode node = new(client, "Unknown");
 
         try
         {
+            node.Writer.Write(true);
             node.Writer.Write("[SERVER] Connected. Please provide your name and a room number: <Name> <Room Number>");
             string name = node.Reader.ReadString();
             int roomId = node.Reader.ReadInt32();
