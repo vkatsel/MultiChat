@@ -8,7 +8,7 @@ public class Room
     private Queue<string> _messages = new();
     private readonly object _lock = new();
     
-    private int _nextId = 0;
+    private int _nextId;
     private readonly string _roomPath;
     
     private readonly Action<ClientNode, int> _switchRoomCallback;
@@ -33,7 +33,7 @@ public class Room
         
             Task.Run(() => Recieve(node, clientId));
         
-            QueueMessage($"[SERVER] {node.Name} joined the room.");
+            QueueMessage($"[SERVER] =={node.Name}== joined the room.");
         }
         catch (Exception e)
         {
@@ -87,7 +87,7 @@ public class Room
                 {
                     case 0x01:
                         string msg = client.Reader.ReadString();
-                        QueueMessage(msg);
+                        QueueMessage($"[{client.Name}] {msg}");
                         break;
                     case 0x02:
                         string filename = client.Reader.ReadString();
@@ -107,8 +107,6 @@ public class Room
                         return;
                     case 0x05:
                         Logger.LogInfo($"Client {client.Name} is closing the connection.");
-    
-                        client.Writer.Write((byte)0x05);
                         client.Writer.Write("That was a nice one. Have a nice day! :)");
                         
                         _clients.TryRemove(clientId, out _);
@@ -192,17 +190,21 @@ public class Room
         string filename = Path.GetFileName(path);
         if (!File.Exists(path)) 
         {
+            client.Writer.Write((byte)0x02);
             client.Writer.Write(false);
             client.Writer.Write($"File {filename} not found.");
             return;
         }
         
+        client.Writer.Write((byte)0x02);
         client.Writer.Write(true);
+        
         client.Writer.Write($"File {filename} found. Download? (Y/n): ");
 
         if (client.Reader.ReadBoolean())
         {
             client.Writer.Write((byte)0x03);
+            client.Writer.Write(filename);
             
             long fileSize = new FileInfo(path).Length;
             client.Writer.Write(fileSize);
@@ -210,7 +212,7 @@ public class Room
             using (FileStream fs = File.OpenRead(path))
             {
                 byte[] buffer = new byte[4096];
-                int bytesRead = 0;
+                int bytesRead;
 
                 while ((bytesRead = fs.Read(buffer, 0, buffer.Length)) > 0)
                 {
@@ -226,7 +228,4 @@ public class Room
             Logger.LogWarning($"{client.Name} refused file {filename} download.");
         }
     }
-    
-    //TODO
-    // Send sender Name also
 }
