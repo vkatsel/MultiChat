@@ -26,22 +26,22 @@ public class Server(IPAddress ipAddress, int port)
     private void HandleClient(TcpClient client)
     {
         NetworkStream stream = client.GetStream();
-        BinaryReader reader = new BinaryReader(stream);
-        BinaryWriter writer = new BinaryWriter(stream);
+        ClientNode node = new(client, "Unknown");
 
         try
         {
-            writer.Write("[SERVER] Connected. Please provide your name and a room number: <Name> <Room Number>");
-            string name = reader.ReadString();
-            int roomNumber = reader.ReadInt32();
+            node.Writer.Write("[SERVER] Connected. Please provide your name and a room number: <Name> <Room Number>");
+            string name = node.Reader.ReadString();
+            int roomId = node.Reader.ReadInt32();
+            node.Name = name;
             
-            Room targetRoom = _rooms.GetOrAdd(roomNumber, _ => new Room(MoveClientToRoom));
+            Room targetRoom = _rooms.GetOrAdd(roomId, _ => new Room(MoveClientToRoom, roomId));
             
-            writer.Write(true);
-            writer.Write($"[SERVER] Joining the room {roomNumber}");
+            node.Writer.Write(true);
+            node.Writer.Write($"[SERVER] Joining the room {roomId}");
             
-            targetRoom.AcceptClient(client, name);
-            Logger.LogInfo($"Client {name} joined room {roomNumber}");
+            targetRoom.AcceptClient(node);
+            Logger.LogInfo($"Client {name} joined room {roomId}");
         }
         catch (Exception e)
         {
@@ -55,7 +55,7 @@ public class Server(IPAddress ipAddress, int port)
         Logger.LogInfo($"Switching {clientNode.Name} to room {newRoomId}");
         clientNode.Writer.Write(true); clientNode.Writer.Write($"[SERVER] Switching to room {newRoomId}");
         
-        Room newRoom = _rooms.GetOrAdd(newRoomId, _ => new Room(MoveClientToRoom));
-        newRoom.AcceptExistingClient(clientNode); 
+        Room newRoom = _rooms.GetOrAdd(newRoomId, _ => new Room(MoveClientToRoom, newRoomId));
+        newRoom.AcceptClient(clientNode); 
     }
 }
